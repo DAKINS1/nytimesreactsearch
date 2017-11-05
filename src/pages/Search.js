@@ -1,80 +1,77 @@
-import React, { Component } from "react";
-import Api from "../utils/API";
-
-
-
+import React, { Component } from 'react';
+import API from '../utils/API';
+import SearchForm from '../components/SearchForm';
+import SearchResults from '../components/SearchResults';
+import axios from 'axios';
+// import Container from '../components/Container';
 
 class Search extends Component {
-    //set the initial values of this.state.topic, this.state.startYear, this.state.endYear
     state = {
-        topic: " ",
-        startYear: " ",
-        endYear: " "
-    };
+        term: "",
+        startDate: "",
+        endDate: "",
+        results: [],
+        error: ""
+    }
 
-    //handle the changes to the input fields
-    handleInputChanges = event => {
+    handleInputChange = event => {
         const { name, value } = event.target;
-    //set the state for the appropriate input field
-    this.setState ({
-        [name]: value
-    });
+        this.setState({
+          [name]: value
+        });
     };
 
-    //when form is submitted, prevent the default event and alert the topic, start and end year
+    //method for handling form submit
     handleFormSubmit = event => {
         event.preventDefault();
-        alert(`Topic: ${this.state.topic}\nStart Year: ${this.state.startYear}\nEnd Year: ${this.state.endYear}`);
-        this.setState({ topic: "", startYear: "", endYear: ""});
+        API.searchDates(this.state)
+        .then(res => {
+            if (res.data.status === "error") {
+            throw new Error(res.data.message);
+            }
+            this.setState({ results: res.data.response.docs, error: "" });
+        })
+        .catch(err => this.setState({ error: err.message }));
+    };
+
+    handleArticleSave = event => {
+        console.log("EVENT TARGET", event.target);
+        console.log("This Result", this.state.results[event.target.id])
+        axios.post('/api/articles/saved/' + this.state.results[event.target.id]._id, {
+            title: this.state.results[event.target.id].headline.main,
+            author: this.state.results[event.target.id].byline.original,
+            link: this.state.results[event.target.id].web_url,
+            snippet: this.state.results[event.target.id].snippet,
+            pub_date: this.state.results[event.target.id].pub_date,
+            givenId: this.state.results[event.target.id]._id
+        })
+        .then(function (response) {
+        console.log("Object response", response);
+        })
+        .catch(function (error) {
+        console.log(error);
+        })
     };
 
 
     render() {
-        return(
-        <div className ="container">
-            <form>
-            <p>Topic: {this.state.topic}</p>
-            <p>startYear: {this.state.startYear}</p>
-            <p>endYear: {this.state.endYear}</p>
-            <div className = "form-group">
-                <label htmlFor = "Topic">Topic</label>
-                <input
-                type = "text"
-                className ="form-control"
-                name = "topic"
-                value = {this.state.topic}
-                onChange = {this.handleInputChanges}
-                id = "topic"
+        return (
+            <div>
+                <SearchForm
+                    handleFormSubmit={this.handleFormSubmit}
+                    handleInputChange={this.handleInputChange}
+                    handleFormClear={this.handleFormClear}
+                    articles={this.state.articles}
                 />
-            </div>
-            <div className = "form-group">
-                <label htmlFor = "startYear">Start Year</label>
-                <input
-                type = "text"
-                className="form-control"
-                name = "startYear"
-                value = {this.state.startYear}
-                onChange = {this.handleInputChanges}
-                id = "startYear"
-                />
-            </div>
-                <div className = "form-group">
-                <label htmlFor = "Topic">End Year</label>
-                <input
-                type = "text"
-                className = "form-control"
-                name = "endYear"
-                value = {this.state.endYear}
-                onChange = {this.handleInputChanges}
-                id = "endYear"
-                />
-            </div>
-            <button onClick = {this.handleFormSubmit} className ="btn btn-primary">Search</button>
-            </form>
-        </div>
 
-            );
+                <SearchResults
+                    results={this.state}
+                    handleArticleSave={this.handleArticleSave}
+                />
+            </div>
+        );
     }
-    }
+
+}
 
 export default Search;
